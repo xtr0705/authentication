@@ -22,6 +22,15 @@ const createUser = async (req , res)=>{
       return alert("please fill all the required fields to create a user");
     }
 
+
+    const checkForExistingUser = await User.findOne({
+      $or:[{email:email},{username:username}]
+    })
+
+    if (checkForExistingUser) {
+      return alert("User with this email or username already exists");
+    }
+
     const hashedPassword = await bcrypt.hash(password,10);
     if(!hashedPassword){
       console.log("error in password");
@@ -86,4 +95,29 @@ const editUserPassword = async (req,res)=>{
   } catch (error) {
     console.log("error in updating the password ",error)
   }
+}
+
+const loginUser = async (req,res)=>{
+  const {email,username,password} = req.body;
+
+  if (!username && !email){
+    return alert("Please type a username or email to login")
+  }
+
+  const matchingUser = await User.findOne({
+    $or:[{email},{username}]
+  });
+
+  if (!matchingUser) {
+    console.log("error finding user");
+    return;
+  }
+
+  const verifyPass= await User.isPasswordCorrect(password,matchingUser.password);
+
+  if (!verifyPass) {
+    return alert("password is incorrect");
+  }
+  
+
 }
