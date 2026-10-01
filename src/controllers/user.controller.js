@@ -1,5 +1,20 @@
 import User from "../models/user.model";
 
+const getUser = async(req,res)=>{
+  try {
+    const {id} = req.body;
+    const user = await User.findById(id);
+    if (!user) {
+      console.log("error in finding user")
+      return;
+    }
+  
+    return res.status(200).json(user);
+  } catch (error) {
+    console.log("error in retrieving user info")
+  }
+}
+
 const createUser = async (req , res)=>{
   try{
     const {username,email,password} = req.body;
@@ -7,14 +22,20 @@ const createUser = async (req , res)=>{
       return alert("please fill all the required fields to create a user");
     }
 
+    const hashedPassword = await bcrypt.hash(password,10);
+    if(!hashedPassword){
+      console.log("error in password");
+      return;
+    }
     const user = await User.create({
       username:username,
       email:email,
-      password:password
+      password:hashedPassword
     })
 
     if (!user) {
-      console.log("error in storing user in DB",);
+      console.log("error in storing user in DB");
+      return;
     }
 
     return res.status(201).json({
@@ -29,16 +50,40 @@ const createUser = async (req , res)=>{
 }
 
 const deleteUser = async (req,res)=>{
-  const id = req.params.id;
-
-  if (!id) {
-    console.log("could'nt retrieve user id"); 
+  try {
+    const id = req.params.id;
+  
+    if (!id) {
+      console.log("could'nt retrieve user id"); 
+      return;
+    }
+  
+    await User.findByIdAndDelete(id);
+  
+    return res.status(204).json({
+      message:"User successfully deleted"
+    })
+  } catch (error) {
+    console.log("error in deleting user : ",error);
   }
-
-  await User.findByIdAndDelete(id);
-
-  return req.status(204).json({
-    message:"User successfully deleted"
-  })
 }
 
+const editUserPassword = async (req,res)=>{
+  try {
+    const {password,newPassword,id}=req.body;
+    const isCorrect = await User.isPasswordCorrect(password);
+    if (!isCorrect) {
+      console.log("Please enter correct current password");
+      return;
+    }
+    const newPasswordHashed = await bcrypt.hash(newPassword,10);
+    const newCredentials=await User.findByIdAndUpdate(id,{password:newPasswordHashed},{new:true});
+  
+    return res.status(201).json({
+      message:"password succesfully changed",
+      newUser:newCredentials
+    })
+  } catch (error) {
+    console.log("error in updating the password ",error)
+  }
+}

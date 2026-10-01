@@ -19,6 +19,13 @@ const userSchema = new mongoose.Schema({
   timestamps:true
 })
 
+userSchema.methods.isPasswordCorrect = async function (password){
+  if (await bcrypt.compare(password,this.password)) {
+    return true;
+  }
+  return false;
+}
+
 const User = mongoose.model("User",userSchema);
 
 export default User;
