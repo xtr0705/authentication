@@ -1,18 +1,21 @@
-import User from "../models/user.model";
-import { generateAccessToken, generateRefreshToken } from "../utils/generateTokens";
+import User from "../models/user.model.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/generateTokens.js";
 
 const getUser = async(req,res)=>{
   try {
-    const {id} = req.body;
+    const id = req.user.userId;
     const user = await User.findById(id);
     if (!user) {
-      console.log("error in finding user")
-      return;
+      return res.status(401).json({
+        message:"error finding user"
+      })
     }
   
     return res.status(200).json(user);
   } catch (error) {
-    console.log("error in retrieving user info")
+    return res.status(401).json({
+        message:"error in getting user info"
+      })
   }
 }
 
@@ -20,22 +23,27 @@ const createUser = async (req , res)=>{
   try{
     const {username,email,password} = req.body;
     if (!username || !email || !password) {
-      return alert("please fill all the required fields to create a user");
+      return res.status(400).json({
+        message: "Username/email and password are required"
+      });
     }
-
-
+    
+    
     const checkForExistingUser = await User.findOne({
       $or:[{email:email},{username:username}]
     })
-
+    
     if (checkForExistingUser) {
-      return alert("User with this email or username already exists");
+      return res.status(400).json({
+        message: "User with this email or username already exists"
+      });
     }
-
+    
     const hashedPassword = await bcrypt.hash(password,10);
     if(!hashedPassword){
-      console.log("error in password");
-      return;
+      return res.status(500).json({
+        message: "error in password"
+      });
     }
     const user = await User.create({
       username:username,
@@ -44,9 +52,12 @@ const createUser = async (req , res)=>{
     })
 
     if (!user) {
-      console.log("error in storing user in DB");
-      return;
+      return res.status(500).json({
+        message:"error in creating user"
+      })
     }
+
+    const finalUser = await User.findById(user._id).select("-password -refreshToken")
 
     return res.status(201).json({
       message:"User created successfully",
@@ -64,8 +75,9 @@ const deleteUser = async (req,res)=>{
     const id = req.params.id;
   
     if (!id) {
-      console.log("could'nt retrieve user id"); 
-      return;
+      return res.status(500).json({
+        message:"Could'nt retrieve user ID from URL"
+      })
     }
   
     await User.findByIdAndDelete(id);
@@ -83,8 +95,9 @@ const editUserPassword = async (req,res)=>{
     const {password,newPassword,id}=req.body;
     const isCorrect = await User.isPasswordCorrect(password);
     if (!isCorrect) {
-      console.log("Please enter correct current password");
-      return;
+      return res.status(400).json({
+        message:"Incorrect password"
+      })
     }
     const newPasswordHashed = await bcrypt.hash(newPassword,10);
     const newCredentials=await User.findByIdAndUpdate(id,{password:newPasswordHashed},{new:true});
@@ -94,7 +107,9 @@ const editUserPassword = async (req,res)=>{
       newUser:newCredentials
     })
   } catch (error) {
-    console.log("error in updating the password ",error)
+    return res.status(500).json({
+      message:"error in updating the password "
+    })
   }
 }
 
