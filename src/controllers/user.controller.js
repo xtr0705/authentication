@@ -1,4 +1,5 @@
 import User from "../models/user.model";
+import { generateAccessToken, generateRefreshToken } from "../utils/generateTokens";
 
 const getUser = async(req,res)=>{
   try {
@@ -104,20 +105,32 @@ const loginUser = async (req,res)=>{
     return alert("Please type a username or email to login")
   }
 
-  const matchingUser = await User.findOne({
+  const user = await User.findOne({
     $or:[{email},{username}]
   });
 
-  if (!matchingUser) {
+  if (!user) {
     console.log("error finding user");
     return;
   }
 
-  const verifyPass= await User.isPasswordCorrect(password,matchingUser.password);
+  const verifyPass= await User.isPasswordCorrect(password,user.password);
 
   if (!verifyPass) {
     return alert("password is incorrect");
   }
-  
+
+  const accessToken = await generateAccessToken(user);
+  const refreshToken = await generateRefreshToken(user);
+
+  user.refreshToken = refreshToken;
+  const responseUser = await User.findOne(user._id).select("-password -refreshToken");
+
+  if (!accessToken || !refreshToken) {
+    console.log("could'nt generate tokens");
+  }
+  const options = {httpOnly:true,secure:true};
+
+  return res.cookie("accessToken",accessToken,options).cookie("refreshToken",refreshToken,options).status(200).json({message:"Login successfull",responseUser});
 
 }
