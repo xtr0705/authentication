@@ -149,3 +149,5 @@ const loginUser = async (req,res)=>{
   return res.cookie("accessToken",accessToken,options).cookie("refreshToken",refreshToken,options).status(200).json({message:"Login successfull",responseUser});
 
 }
+
+export {createUser,loginUser,editUserPassword,deleteUser,getUser}
