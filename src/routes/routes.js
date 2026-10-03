@@ -9,4 +9,4 @@ userRouter.post("/user-create",createUser);
 userRouter.delete("/user-delete",verifyJWT,deleteUser);
 userRouter.post("/user-login",loginUser);
 userRouter.get("/user-profile",verifyJWT,getUser);
-
+userRouter.post("/refresh")

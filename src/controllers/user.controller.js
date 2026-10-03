@@ -11,8 +11,13 @@ const getUser = async(req,res)=>{
         message:"error finding user"
       })
     }
+
+    const userInResponse = await User.findById(user._id).select("-password -refreshToken");
   
-    return res.status(200).json(user);
+    return res.status(200).json({
+      message:"User info fetched successfully",
+      user:userInResponse
+    });
   } catch (error) {
     return res.status(401).json({
         message:"error in getting user info"
@@ -73,7 +78,7 @@ const createUser = async (req , res)=>{
 
 const deleteUser = async (req,res)=>{
   try {
-    const id = req.params.id;
+    const id = req.user.userId;
   
     if (!id) {
       return res.status(500).json({
@@ -93,15 +98,17 @@ const deleteUser = async (req,res)=>{
 
 const editUserPassword = async (req,res)=>{
   try {
-    const {password,newPassword,id}=req.body;
-    const isCorrect = await User.isPasswordCorrect(password);
+    const {password,newPassword,_id}=req.body;
+
+    const user = await User.findById(_id);
+    const isCorrect = await user.isPasswordCorrect(password);
     if (!isCorrect) {
       return res.status(400).json({
         message:"Incorrect password"
       })
     }
     const newPasswordHashed = await bcrypt.hash(newPassword,10);
-    const newCredentials=await User.findByIdAndUpdate(id,{password:newPasswordHashed},{new:true});
+    const newCredentials=await User.findByIdAndUpdate(_id,{password:newPasswordHashed},{new:true});
   
     return res.status(201).json({
       message:"password succesfully changed",
@@ -153,6 +160,43 @@ const loginUser = async (req,res)=>{
 
   return res.cookie("accessToken",accessToken,options).cookie("refreshToken",refreshToken,options).status(200).json({message:"Login successfull",responseUser});
 
+}
+
+const refreshAccessToken = async (req,res)=>{
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        message:"Refresh Token not found";
+      })
+    }
+
+    const payload = jwt.verify(refreshToken,process.env.JWT_REFRESH_SECRET);
+
+    const user = await User.findById(payload.userId);
+    if (!user) {
+      return res.status(401).json({
+        message:"User not found"
+      })
+    }
+
+    const newAccessToken = jwt.sign({userId:user._id},process.env.JWT_ACCESS_SECRET,{expiresIn:"15m"})
+
+    res.cookie("accessToken",newAccessToken,{
+      httpOnly:true,
+      secure:true
+    });
+
+    return res.status(200).json({
+      message:"Access token refreshed"
+    })
+
+  } catch (error) {
+    return res.status(401).json({
+      message:"Invalid or expired refresh token"
+    })
+  }
 }
 
 export {createUser,loginUser,editUserPassword,deleteUser,getUser}
