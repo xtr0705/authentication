@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/generateTokens.js";
+import bcrypt from "bcryptjs";
 
 const getUser = async(req,res)=>{
   try {
@@ -61,7 +62,7 @@ const createUser = async (req , res)=>{
 
     return res.status(201).json({
       message:"User created successfully",
-      user : user
+      user : finalUser
     })
 
   }catch(error){
@@ -129,21 +130,25 @@ const loginUser = async (req,res)=>{
     return;
   }
 
-  const verifyPass= await User.isPasswordCorrect(password,user.password);
+  const verifyPass= await user.isPasswordCorrect(password);
 
   if (!verifyPass) {
     return alert("password is incorrect");
   }
 
-  const accessToken = await generateAccessToken(user);
-  const refreshToken = await generateRefreshToken(user);
-
-  user.refreshToken = refreshToken;
-  const responseUser = await User.findOne(user._id).select("-password -refreshToken");
+  const accessToken =  generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
 
   if (!accessToken || !refreshToken) {
-    console.log("could'nt generate tokens");
+    return res.status(500).json({
+      message:"Could'nt generate tokens"
+    })
   }
+
+  user.refreshToken = refreshToken;
+  await user.save();
+  const responseUser = await User.findOne(user._id).select("-password -refreshToken");
+
   const options = {httpOnly:true,secure:true};
 
   return res.cookie("accessToken",accessToken,options).cookie("refreshToken",refreshToken,options).status(200).json({message:"Login successfull",responseUser});

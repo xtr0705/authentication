@@ -2,11 +2,11 @@ import express from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { createUser, deleteUser, editUserPassword, getUser, loginUser } from "../controllers/user.controller.js";
 
-const router = express.Router();
+export const userRouter = express.Router();
 
-router.post("/user-create",createUser);
-router.patch("/user-edit",verifyJWT,editUserPassword);
-router.delete("/user-delete",verifyJWT,deleteUser);
-router.post("/user-login",loginUser);
-router.get("/user-profile",verifyJWT,getUser);
+userRouter.patch("/user-edit",verifyJWT,editUserPassword);
+userRouter.post("/user-create",createUser);
+userRouter.delete("/user-delete",verifyJWT,deleteUser);
+userRouter.post("/user-login",loginUser);
+userRouter.get("/user-profile",verifyJWT,getUser);
 
